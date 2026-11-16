@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Project RPG // Dynamic A* SLAM & Reverse Recovery GCS</title>
+  <title>R.P.G 진로탐색수업 시뮬레이터</title>
   <style>
     :root {
       --bg-dark: #0b0f17;
@@ -41,7 +41,7 @@
     }
     .brand { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .brand h1 { font-size: 14px; letter-spacing: 0.5px; color: var(--accent); }
-    .brand span { font-size: 11px; color: var(--text-dim); }
+    .brand span { font-size: 12px; font-weight: 600; color: var(--text-main); }
     .status-pills { display: flex; gap: 8px; align-items: center; }
     .pill {
       padding: 4px 10px;
@@ -204,7 +204,7 @@
   <header>
     <div class="brand">
       <h1>PROJECT RPG // DYNAMIC A* SLAM & REVERSE RECOVERY</h1>
-      <span>경북대학교 우주공학부 자율이동로봇 시뮬레이터 v3.3</span>
+      <span>• R.P.G 진로탐색수업 시뮬레이터</span>
     </div>
     <div class="status-pills">
       <div class="pill" id="gearPill">GEAR: N</div>
@@ -1095,7 +1095,7 @@
       });
       document.getElementById('btnSnap').addEventListener('click', () => {
         const link = document.createElement('a');
-        link.download = `RPG_Reverse_SLAM_${Date.now()}.png`;
+        link.download = `RPG_Sim_${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
       });
