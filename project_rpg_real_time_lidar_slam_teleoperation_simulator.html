@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Project RPG - Real-time LiDAR SLAM & Teleoperation Simulator</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono for aerospace telemetry aesthetics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            gcs: {
+              bg: '#070b14',
+              panel: '#0d1424',
+              card: '#111b30',
+              border: '#1e2d4a',
+              cyan: '#06b6d4',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              rose: '#f43f5e',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Custom range slider styling for precision aerospace instrumentation */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #1e2d4a;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #06b6d4;
+      border: 2px solid #ecfeff;
+      margin-top: -5px;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.65);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      background: #22d3ee;
+    }
+    input[type="range"]::-moz-range-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #1e2d4a;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #06b6d4;
+      border: 2px solid #ecfeff;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.65);
+    }
+
+    /* Prevent touch callouts and scrolling on virtual D-pad buttons */
+    .dpad-btn {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .dpad-btn.active-press {
+      transform: scale(0.95);
+      border-color: #22d3ee;
+      background-color: rgba(6, 182, 212, 0.25);
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.45);
+    }
+    .dpad-estop.active-press {
+      transform: scale(0.95);
+      border-color: #fb7185;
+      background-color: rgba(244, 63, 94, 0.35);
+      box-shadow: 0 0 18px rgba(244, 63, 94, 0.6);
+    }
+
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #070b14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e2d4a;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2d436e;
+    }
+  </style>
+</head>
+<body class="bg-gcs-bg text-slate-100 font-sans min-h-screen flex flex-col selection:bg-cyan-500/30">
+
+  <!-- TOP AEROSPACE GCS HEADER BAR -->
+  <header class="bg-gcs-panel border-b border-gcs-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30 shadow-lg">
+    <div class="flex items-center gap-3">
+      <!-- Custom Inline SVG Rover/Radar Emblem -->
+      <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center shadow-inner">
+        <svg class="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="9" stroke-dasharray="3 2" />
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke-linecap="round" />
+          <path d="M12 12l5-5" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" />
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h1 class="text-sm sm:text-base font-bold tracking-wide text-white uppercase">
+            Project RPG <span class="text-cyan-400 font-mono font-semibold">// LiDAR SLAM &amp; Teleop GCS</span>
+          </h1>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded-md bg-slate-800/90 text-slate-300 border border-slate-700">
+            RPLIDAR-A2 SIM v2.4
+          </span>
+        </div>
+        <p class="text-xs text-slate-400">
+          경북대학교 우주공학부 자율이동로봇 시뮬레이터 &bull; 40m &times; 40m Occupancy Grid (0.25m/cell)
+        </p>
+      </div>
+    </div>
+
+    <!-- Live System Mode & Alert Badge -->
+    <div class="flex items-center gap-2.5 ml-auto sm:ml-0">
+      <div class="hidden md:flex items-center gap-2 text-xs font-mono text-slate-400 bg-gcs-card px-3 py-1.5 rounded-lg border border-gcs-border">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="fpsCounter">60 FPS</span>
+      </div>
+
+      <div id="statusBadge" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg border font-mono text-xs font-bold tracking-wider transition-all duration-150 bg-cyan-500/15 border-cyan-500/50 text-cyan-300">
+        <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+        <span id="statusText">MANUAL TELEOP</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE: SPLIT-SCREEN VIEWPORT & CONTROL DECK -->
+  <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+    <!-- LEFT / CENTER: RVIZ-STYLE SLAM SIMULATION VIEWPORT -->
+    <section class="flex-1 flex flex-col bg-gcs-bg p-3 sm:p-4 gap-3 min-h-[460px] lg:h-[calc(100vh-61px)]">
+      
+      <!-- Top Environment & Sensor Toolbar -->
+      <div class="bg-gcs-panel border border-gcs-border rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 shadow-md">
+        <!-- Map Preset & Actions -->
+        <div class="flex flex-wrap items-center gap-2">
+          <label for="mapPresetSelect" class="text-xs font-mono text-slate-400 hidden sm:inline">ENV:</label>
+          <select id="mapPresetSelect" class="bg-gcs-card border border-gcs-border text-slate-200 text-xs font-medium rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-500">
+            <option value="rooms">Tactical Rooms &amp; Corridors</option>
+            <option value="pillars">Obstacle Pillar Field</option>
+            <option value="maze">Complex Maze</option>
+          </select>
+
+          <button id="btnRandomizeMap" class="px-2.5 py-1.5 rounded-lg bg-gcs-card hover:bg-slate-800 border border-gcs-border hover:border-cyan-500/50 text-xs font-medium text-slate-200 transition flex items-center gap-1.5" title="Generate procedural random environment">
+            <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Randomize</span>
+          </button>
+
+          <button id="btnResetSlam" class="px-2.5 py-1.5 rounded-lg bg-gcs-card hover:bg-slate-800 border border-gcs-border hover:border-amber-500/50 text-xs font-medium text-amber-300 transition flex items-center gap-1.5" title="Clear discovered SLAM map and return rover to origin">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Reset SLAM</span>
+          </button>
+        </div>
+
+        <!-- Toggles & PNG Export -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- X-Ray Ground Truth Toggle -->
+          <label class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gcs-card border border-gcs-border cursor-pointer hover:border-slate-600 transition select-none">
+            <input type="checkbox" id="toggleXray" class="sr-only peer" />
+            <div class="w-7 h-4 bg-slate-700 rounded-full peer peer-checked:bg-amber-500 relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-3"></div>
+            <span class="text-xs font-medium text-slate-300 peer-checked:text-amber-300">X-Ray Ground Truth</span>
+          </label>
+
+          <!-- Gaussian Sensor Noise Toggle -->
+          <label class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gcs-card border border-gcs-border cursor-pointer hover:border-slate-600 transition select-none">
+            <input type="checkbox" id="toggleNoise" class="sr-only peer" />
+            <div class="w-7 h-4 bg-slate-700 rounded-full peer peer-checked:bg-cyan-500 relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-3"></div>
+            <span class="text-xs font-medium text-slate-300 peer-checked:text-cyan-300">Gaussian Noise</span>
+          </label>
+
+          <!-- Download Map Snapshot (PNG) -->
+          <button id="btnDownloadPng" class="px-3 py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/35 border border-cyan-500/50 text-xs font-semibold text-cyan-300 transition flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Snapshot PNG</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas Viewport Container -->
+      <div id="canvasContainer" class="relative flex-1 bg-[#050810] border border-gcs-border rounded-xl overflow-hidden flex items-center justify-center shadow-2xl">
+        <canvas id="simCanvas" class="block cursor-crosshair"></canvas>
+
+        <!-- Top-Left HUD Legend Overlay -->
+        <div class="absolute top-3 left-3 pointer-events-none bg-gcs-panel/85 backdrop-blur-md border border-gcs-border/90 rounded-lg px-3 py-2 text-[11px] font-mono space-y-1 shadow-lg">
+          <div class="text-slate-300 font-semibold border-b border-slate-800 pb-1 mb-1">OCCUPANCY GRID LEGEND</div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-sm bg-[#0b1120] border border-slate-700 inline-block"></span>
+            <span class="text-slate-400">Unexplored (Fog of War)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-sm bg-[#1e293b] border border-slate-600 inline-block"></span>
+            <span class="text-slate-200">Explored Free Space</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-sm bg-[#f8fafc] inline-block"></span>
+            <span class="text-white">SLAM Wall / Obstacle</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-cyan-400/70 inline-block"></span>
+            <span class="text-cyan-300">LiDAR Ray / Rover Trail</span>
+          </div>
+        </div>
+
+        <!-- Bottom-Left Waypoint Helper Hint -->
+        <div class="absolute bottom-3 left-3 pointer-events-none bg-gcs-panel/85 backdrop-blur-md border border-gcs-border/90 rounded-lg px-3 py-1.5 text-[11px] text-slate-300 shadow-lg hidden sm:flex items-center gap-2">
+          <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-semibold">CLICK MAP</span>
+          <span>탐색된 빈 공간을 클릭하면 A* 목표 웨이포인트를 지정합니다.</span>
+        </div>
+
+        <!-- Non-intrusive Toast Notification Banner -->
+        <div id="toastBanner" class="absolute top-3 right-3 max-w-xs bg-slate-900/95 border border-amber-500/60 text-amber-200 text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-xl opacity-0 pointer-events-none transition-opacity duration-200">
+          Notification message
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: TELEMETRY, A* WAYPOINT, TUNING SLIDERS & WEB CONTROLLER -->
+    <aside class="w-full lg:w-[400px] xl:w-[430px] bg-gcs-panel border-t lg:border-t-0 lg:border-l border-gcs-border p-3 sm:p-4 flex flex-col gap-3.5 lg:h-[calc(100vh-61px)] lg:overflow-y-auto">
+
+      <!-- 1. LIVE TELEMETRY & SLAM STATUS DASHBOARD -->
+      <div class="bg-gcs-card border border-gcs-border rounded-xl p-3.5 shadow-sm">
+        <div class="flex items-center justify-between mb-2.5">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+            <span class="w-1.5 h-3.5 bg-cyan-400 rounded-full"></span>
+            Live Telemetry &amp; SLAM Metrics
+          </h2>
+          <span class="text-[11px] font-mono text-slate-400">ODOM / TF</span>
+        </div>
+
+        <!-- 2x3 Telemetry Readout Grid -->
+        <div class="grid grid-cols-3 gap-2 font-mono">
+          <div class="bg-gcs-bg/90 border border-gcs-border/80 rounded-lg p-2">
+            <div class="text-[10px] text-slate-400">POS X</div>
+            <div class="text-sm font-bold text-white"><span id="telX">6.00</span><span class="text-[10px] text-slate-400 ml-0.5">m</span></div>
+          </div>
+          <div class="bg-gcs-bg/90 border border-gcs-border/80 rounded-lg p-2">
+            <div class="text-[10px] text-slate-400">POS Y</div>
+            <div class="text-sm font-bold text-white"><span id="telY">6.00</span><span class="text-[10px] text-slate-400 ml-0.5">m</span></div>
+          </div>
+          <div class="bg-gcs-bg/90 border border-gcs-border/80 rounded-lg p-2">
+            <div class="text-[10px] text-slate-400">YAW (&Psi;)</div>
+            <div class="text-sm font-bold text-cyan-300"><span id="telYaw">0.0</span><span class="text-[10px] text-slate-400 ml-0.5">&deg;</span></div>
+          </div>
+          <div class="bg-gcs-bg/90 border border-gcs-border/80 rounded-lg p-2">
+            <div class="text-[10px] text-slate-400">LIN VEL (v)</div>
+            <div class="text-sm font-bold text-emerald-300"><span id="telVel">0.00</span><span class="text-[10px] text-slate-400 ml-0.5">m/s</span></div>
+          </div>
+          <div class="bg-gcs-bg/90 border border-gcs-border/80 rounded-lg p-2">
+            <div class="text-[10px] text-slate-400">ANG VEL (&omega;)</div>
+            <div class="text-sm font-bold text-emerald-300"><span id="telOmega">0.00</span><span class="text-[10px] text-slate-400 ml-0.5">r/s</span></div>
+          </div>
+          <div class="bg-gcs-bg/90 border border-gcs-border/80 rounded-lg p-2">
+            <div class="text-[10px] text-slate-400">LIDAR HITS</div>
+            <div class="text-sm font-bold text-amber-300"><span id="telHits">0</span><span class="text-[10px] text-slate-400 ml-0.5">pts</span></div>
+          </div>
+        </div>
+
+        <!-- Map Exploration Coverage Progress Bar -->
+        <div class="mt-3 bg-gcs-bg/90 border border-gcs-border/80 rounded-lg p-2.5">
+          <div class="flex items-center justify-between text-xs font-mono mb-1.5">
+            <span class="text-slate-400">MAP EXPLORATION COVERAGE</span>
+            <span id="telCoverage" class="font-bold text-cyan-400">0.0%</span>
+          </div>
+          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="coverageBar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full transition-all duration-150" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. HYBRID AUTONOMOUS A* WAYPOINT NAVIGATION -->
+      <div class="bg-gcs-card border border-gcs-border rounded-xl p-3.5 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+            <span class="w-1.5 h-3.5 bg-emerald-400 rounded-full"></span>
+            Hybrid A* Waypoint Navigation
+          </h2>
+          <span id="waypointCoordBadge" class="text-[11px] font-mono text-slate-400">NO TARGET</span>
+        </div>
+
+        <p class="text-[11px] text-slate-400 mb-2.5 leading-relaxed">
+          탐색 완료된 맵 위를 클릭하여 A* 최단 경로를 생성하고 자율주행으로 이동합니다. 수동 조작 시 즉시 제어권이 전환됩니다.
+        </p>
+
+        <div class="flex items-center gap-2">
+          <button id="btnAutoDrive" disabled class="flex-1 py-2 px-3 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 font-semibold text-xs transition disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-600/35 flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span id="btnAutoDriveText">Drive to Waypoint (Auto)</span>
+          </button>
+
+          <button id="btnClearWaypoint" class="py-2 px-3 rounded-lg bg-gcs-bg hover:bg-slate-800 border border-gcs-border text-slate-300 text-xs font-medium transition">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. INTERACTIVE WEB CONTROLLER D-PAD (MOUSE / TOUCH / KEYBOARD MIRROR) -->
+      <div class="bg-gcs-card border border-gcs-border rounded-xl p-3.5 shadow-sm">
+        <div class="flex items-center justify-between mb-2.5">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+            <span class="w-1.5 h-3.5 bg-amber-400 rounded-full"></span>
+            Rover Teleop Controller
+          </h2>
+          <span class="text-[11px] font-mono text-slate-400">WASD / ARROWS / TOUCH</span>
+        </div>
+
+        <!-- Tactile 3x3 D-Pad Layout -->
+        <div class="grid grid-cols-3 gap-2 max-w-[270px] mx-auto select-none">
+          <!-- Top-Left Empty / Hint -->
+          <div class="flex items-center justify-center text-[10px] font-mono text-slate-500">Q/E: N/A</div>
+
+          <!-- FORWARD -->
+          <button id="padUp" class="dpad-btn h-14 rounded-xl bg-gcs-bg border border-slate-700 hover:border-cyan-500/60 flex flex-col items-center justify-center gap-0.5 text-slate-200 transition">
+            <svg class="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="text-[10px] font-mono font-semibold">FWD [W/&uarr;]</span>
+          </button>
+
+          <!-- Top-Right Empty -->
+          <div class="flex items-center justify-center text-[10px] font-mono text-slate-500">4WD-DIFF</div>
+
+          <!-- TURN LEFT -->
+          <button id="padLeft" class="dpad-btn h-14 rounded-xl bg-gcs-bg border border-slate-700 hover:border-cyan-500/60 flex flex-col items-center justify-center gap-0.5 text-slate-200 transition">
+            <svg class="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="text-[10px] font-mono font-semibold">LEFT [A/&larr;]</span>
+          </button>
+
+          <!-- E-STOP -->
+          <button id="padStop" class="dpad-btn dpad-estop h-14 rounded-xl bg-rose-950/50 border border-rose-500/50 hover:border-rose-400 flex flex-col items-center justify-center gap-0.5 text-rose-300 transition">
+            <span class="text-xs font-mono font-bold tracking-wider">E-STOP</span>
+            <span class="text-[9px] font-mono text-rose-400/90">[SPACE]</span>
+          </button>
+
+          <!-- TURN RIGHT -->
+          <button id="padRight" class="dpad-btn h-14 rounded-xl bg-gcs-bg border border-slate-700 hover:border-cyan-500/60 flex flex-col items-center justify-center gap-0.5 text-slate-200 transition">
+            <svg class="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="text-[10px] font-mono font-semibold">RIGHT [D/&rarr;]</span>
+          </button>
+
+          <!-- Bottom-Left Empty -->
+          <div></div>
+
+          <!-- BACKWARD -->
+          <button id="padDown" class="dpad-btn h-14 rounded-xl bg-gcs-bg border border-slate-700 hover:border-cyan-500/60 flex flex-col items-center justify-center gap-0.5 text-slate-200 transition">
+            <svg class="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 5v14M19 12l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="text-[10px] font-mono font-semibold">REV [S/&darr;]</span>
+          </button>
+
+          <!-- Bottom-Right Empty -->
+          <div></div>
+        </div>
+      </div>
+
+      <!-- 4. REAL-TIME KINEMATICS & LIDAR PARAMETER TUNING SLIDERS -->
+      <div class="bg-gcs-card border border-gcs-border rounded-xl p-3.5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+            <span class="w-1.5 h-3.5 bg-purple-400 rounded-full"></span>
+            Real-Time Parameter Tuning
+          </h2>
+          <button id="btnResetParams" class="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 underline">Defaults</button>
+        </div>
+
+        <!-- Slider 1: Max Linear Speed -->
+        <div>
+          <div class="flex justify-between text-xs font-mono mb-1">
+            <span class="text-slate-300">Max Linear Speed</span>
+            <span id="valMaxSpeed" class="text-cyan-300 font-semibold">3.0 m/s</span>
+          </div>
+          <input id="sliderMaxSpeed" type="range" min="0.5" max="6.0" step="0.1" value="3.0" class="w-full" />
+        </div>
+
+        <!-- Slider 2: Steering Angular Rate -->
+        <div>
+          <div class="flex justify-between text-xs font-mono mb-1">
+            <span class="text-slate-300">Steering Angular Rate</span>
+            <span id="valSteerRate" class="text-cyan-300 font-semibold">2.2 rad/s</span>
+          </div>
+          <input id="sliderSteerRate" type="range" min="0.5" max="4.0" step="0.1" value="2.2" class="w-full" />
+        </div>
+
+        <!-- Slider 3: LiDAR Max Range -->
+        <div>
+          <div class="flex justify-between text-xs font-mono mb-1">
+            <span class="text-slate-300">LiDAR Max Range</span>
+            <span id="valLidarRange" class="text-emerald-300 font-semibold">10.0 m</span>
+          </div>
+          <input id="sliderLidarRange" type="range" min="3.0" max="18.0" step="0.5" value="10.0" class="w-full" />
+        </div>
+
+        <!-- Slider 4: LiDAR Ray Resolution -->
+        <div>
+          <div class="flex justify-between text-xs font-mono mb-1">
+            <span class="text-slate-300">LiDAR Ray Resolution</span>
+            <span id="valLidarRays" class="text-emerald-300 font-semibold">180 rays</span>
+          </div>
+          <input id="sliderLidarRays" type="range" min="36" max="360" step="12" value="180" class="w-full" />
+        </div>
+
+        <!-- Slider 5: Robot Safety Radius -->
+        <div>
+          <div class="flex justify-between text-xs font-mono mb-1">
+            <span class="text-slate-300">Robot Safety Radius</span>
+            <span id="valRobotRadius" class="text-amber-300 font-semibold">0.55 m</span>
+          </div>
+          <input id="sliderRobotRadius" type="range" min="0.30" max="1.50" step="0.05" value="0.55" class="w-full" />
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- CORE SIMULATION ENGINE & GCS CONTROLLER SCRIPT -->
+  <script>
+    (() => {
+      'use strict';
+
+      // =========================================================================
+      // 1. WORLD & OCCUPANCY GRID CONSTANTS
+      // =========================================================================
+      const WORLD_SIZE = 40.0;       // 40m x 40m physical environment
+      const CELL_RES = 0.25;         // 0.25m per grid cell
+      const GRID_DIM = Math.round(WORLD_SIZE / CELL_RES); // 160 x 160 cells
+      const TOTAL_CELLS = GRID_DIM * GRID_DIM;
+
+      // Occupancy Grid Cell States
+      const CELL_UNEXPLORED = 0;     // Dark Fog of War
+      const CELL_FREE = 1;           // Illuminated Free Floor
+      const CELL_OCCUPIED = 2;       // High-Contrast Wall / Obstacle
+
+      // =========================================================================
+      // 2. SIMULATION STATE & TUNABLE PARAMETERS
+      // =========================================================================
+      const params = {
+        maxSpeed: 3.0,        // m/s
+        steerRate: 2.2,       // rad/s
+        lidarRange: 10.0,     // m
+        lidarRays: 180,       // rays per 360 deg scan
+        robotRadius: 0.55,    // m
+        xrayGroundTruth: false,
+        gaussianNoise: false,
+      };
+
+      const rover = {
+        x: 5.0,
+        y: 5.0,
+        yaw: 0.0,
+        v: 0.0,
+        omega: 0.0,
+        trail: [],
+        collisionAlertTimer: 0.0,
+      };
+
+      // Grids stored in high-speed TypedArrays
+      const trueGrid = new Uint8Array(TOTAL_CELLS); // 0 = empty, 1 = wall
+      const slamGrid = new Uint8Array(TOTAL_CELLS); // 0 = unexplored, 1 = free, 2 = occupied
+      let totalReachableCells = 1; // Computed via flood-fill for accurate % coverage
+
+      // Offscreen Canvas for blazing-fast 60 FPS Occupancy Grid rendering
+      const slamOffscreen = document.createElement('canvas');
+      slamOffscreen.width = GRID_DIM;
+      slamOffscreen.height = GRID_DIM;
+      const slamOffCtx = slamOffscreen.getContext('2d');
+      const slamImageData = slamOffCtx.createImageData(GRID_DIM, GRID_DIM);
+      let slamDirty = true;
+
+      // Offscreen Canvas for X-Ray Ground Truth overlay
+      const xrayOffscreen = document.createElement('canvas');
+      xrayOffscreen.width = GRID_DIM;
+      xrayOffscreen.height = GRID_DIM;
+      const xrayOffCtx = xrayOffscreen.getContext('2d');
+
+      // LiDAR scan results for current frame rendering
+      let currentRays = []; // Array of { endX, endY, hit }
+      let activeLidarHits = 0;
+
+      // Hybrid A* Waypoint & Autonomous Navigation state
+      let waypoint = null;       // { x, y } in meters
+      let aStarPath = [];        // Array of { x, y } in meters
+      let autoDriveActive = false;
+
+      // Input state (Keyboard + Virtual D-Pad merged)
+      const keysPressed = {
+        up: false,
+        down: false,
+        left: false,
+        right: false,
+      };
+
+      // =========================================================================
+      // 3. DOM ELEMENT REFERENCES
+      // =========================================================================
+      const canvasContainer = document.getElementById('canvasContainer');
+      const canvas = document.getElementById('simCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const statusBadge = document.getElementById('statusBadge');
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      const fpsCounter = document.getElementById('fpsCounter');
+      const toastBanner = document.getElementById('toastBanner');
+
+      // Telemetry readouts
+      const telX = document.getElementById('telX');
+      const telY = document.getElementById('telY');
+      const telYaw = document.getElementById('telYaw');
+      const telVel = document.getElementById('telVel');
+      const telOmega = document.getElementById('telOmega');
+      const telHits = document.getElementById('telHits');
+      const telCoverage = document.getElementById('telCoverage');
+      const coverageBar = document.getElementById('coverageBar');
+
+      // Waypoint UI
+      const waypointCoordBadge = document.getElementById('waypointCoordBadge');
+      const btnAutoDrive = document.getElementById('btnAutoDrive');
+      const btnAutoDriveText = document.getElementById('btnAutoDriveText');
+      const btnClearWaypoint = document.getElementById('btnClearWaypoint');
+
+      // =========================================================================
+      // 4. HELPER UTILITIES & TOAST NOTIFICATIONS
+      // =========================================================================
+      let toastTimeout = null;
+      function showToast(message, type = 'amber') {
+        toastBanner.textContent = message;
+        toastBanner.className = `absolute top-3 right-3 max-w-xs text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-xl transition-opacity duration-200 pointer-events-none border ${
+          type === 'rose'
+            ? 'bg-rose-950/95 border-rose-500/70 text-rose-200'
+            : type === 'emerald'
+            ? 'bg-emerald-950/95 border-emerald-500/70 text-emerald-200'
+            : 'bg-slate-900/95 border-amber-500/60 text-amber-200'
+        }`;
+        toastBanner.style.opacity = '1';
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+          toastBanner.style.opacity = '0';
+        }, 2800);
+      }
+
+      function worldToGrid(val) {
+        return Math.floor(val / CELL_RES);
+      }
+
+      function gridToWorldCenter(idx) {
+        return (idx + 0.5) * CELL_RES;
+      }
+
+      function isInsideGrid(gx, gy) {
+        return gx >= 0 && gx < GRID_DIM && gy >= 0 && gy < GRID_DIM;
+      }
+
+      function boxGaussianRandom() {
+        // Box-Muller transform for realistic Gaussian sensor noise
+        let u = 0, v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+      }
+
+      // =========================================================================
+      // 5. ENVIRONMENT GENERATORS (PRESETS + PROCEDURAL RANDOMIZER)
+      // =========================================================================
+      function clearTrueGrid() {
+        trueGrid.fill(0);
+        // Outer perimeter walls (2 cells thick = 0.5m)
+        for (let i = 0; i < GRID_DIM; i++) {
+          for (let t = 0; t < 2; t++) {
+            trueGrid[t * GRID_DIM + i] = 1;
+            trueGrid[(GRID_DIM - 1 - t) * GRID_DIM + i] = 1;
+            trueGrid[i * GRID_DIM + t] = 1;
+            trueGrid[i * GRID_DIM + (GRID_DIM - 1 - t)] = 1;
+          }
+        }
+      }
+
+      function fillRectWorld(x1, y1, x2, y2, val = 1) {
+        const gx1 = Math.max(0, worldToGrid(Math.min(x1, x2)));
+        const gy1 = Math.max(0, worldToGrid(Math.min(y1, y2)));
+        const gx2 = Math.min(GRID_DIM - 1, worldToGrid(Math.max(x1, x2)));
+        const gy2 = Math.min(GRID_DIM - 1, worldToGrid(Math.max(y1, y2)));
+        for (let gy = gy1; gy <= gy2; gy++) {
+          for (let gx = gx1; gx <= gx2; gx++) {
+            trueGrid[gy * GRID_DIM + gx] = val;
+          }
+        }
+      }
+
+      function fillCircleWorld(cx, cy, radius, val = 1) {
+        const gx1 = Math.max(0, worldToGrid(cx - radius));
+        const gy1 = Math.max(0, worldToGrid(cy - radius));
+        const gx2 = Math.min(GRID_DIM - 1, worldToGrid(cx + radius));
+        const gy2 = Math.min(GRID_DIM - 1, worldToGrid(cy + radius));
+        const rSq = radius * radius;
+        for (let gy = gy1; gy <= gy2; gy++) {
+          const wy = gridToWorldCenter(gy);
+          for (let gx = gx1; gx <= gx2; gx++) {
+            const wx = gridToWorldCenter(gx);
+            const dx = wx - cx;
+            const dy = wy - cy;
+            if (dx * dx + dy * dy <= rSq) {
+              trueGrid[gy * GRID_DIM + gx] = val;
+            }
+          }
+        }
+      }
+
+      function buildEnvironment(presetName) {
+        clearTrueGrid();
+        let spawnX = 5.0;
+        let spawnY = 5.0;
+        let spawnYaw = 0.0;
+
+        if (presetName === 'rooms') {
+          // Tactical Rooms & Corridors
+          spawnX = 4.5;
+          spawnY = 4.5;
+          spawnYaw = 0.2;
+
+          // Room 1 (Bottom-Left) with North and East doorways
+          fillRectWorld(0.5, 11.5, 12.0, 12.2, 1);
+          fillRectWorld(11.5, 0.5, 12.2, 12.2, 1);
+          fillRectWorld(5.0, 11.4, 8.2, 12.3, 0);  // North doorway
+          fillRectWorld(11.4, 4.5, 12.3, 7.5, 0);  // East doorway
+
+          // Central Command Hub
+          fillRectWorld(16.0, 14.0, 26.0, 14.7, 1);
+          fillRectWorld(16.0, 25.0, 26.0, 25.7, 1);
+          fillRectWorld(16.0, 14.0, 16.7, 25.7, 1);
+          fillRectWorld(25.3, 14.0, 26.0, 25.7, 1);
+          // Doorways into central hub
+          fillRectWorld(19.5, 13.9, 22.5, 14.8, 0);
+          fillRectWorld(19.5, 24.9, 22.5, 25.8, 0);
+          fillRectWorld(15.9, 18.5, 16.8, 21.5, 0);
+          // Central tactical console block inside hub
+          fillRectWorld(19.8, 18.8, 22.2, 20.8, 1);
+
+          // Top-Left Lab Wing
+          fillRectWorld(0.5, 27.5, 12.5, 28.2, 1);
+          fillRectWorld(11.8, 27.5, 12.5, 39.5, 1);
+          fillRectWorld(5.5, 27.4, 8.5, 28.3, 0);
+          fillRectWorld(11.7, 32.0, 12.6, 35.0, 0);
+
+          // Right Wing Storage Bays
+          fillRectWorld(29.5, 0.5, 30.2, 16.0, 1);
+          fillRectWorld(29.5, 10.0, 39.5, 10.7, 1);
+          fillRectWorld(29.4, 4.0, 30.3, 7.0, 0);
+
+          fillRectWorld(29.5, 23.0, 30.2, 39.5, 1);
+          fillRectWorld(29.5, 29.5, 39.5, 30.2, 1);
+          fillRectWorld(29.4, 25.0, 30.3, 28.0, 0);
+          fillRectWorld(33.5, 29.4, 36.5, 30.3, 0);
+
+          // Tactical corridor barriers
+          fillRectWorld(17.5, 5.5, 23.5, 6.5, 1);
+          fillRectWorld(17.5, 33.0, 23.5, 34.0, 1);
+
+        } else if (presetName === 'pillars') {
+          // Obstacle Pillar Field (Great for LiDAR shadow & A* slalom testing)
+          spawnX = 4.0;
+          spawnY = 20.0;
+          spawnYaw = 0.0;
+
+          const spacing = 6.2;
+          for (let x = 9.0; x <= 34.0; x += spacing) {
+            for (let y = 6.0; y <= 34.0; y += spacing) {
+              const offsetX = (Math.round(y / spacing) % 2 === 0) ? 0 : 1.8;
+              const px = x + offsetX;
+              if (px < 36.5 && Math.hypot(px - spawnX, y - spawnY) > 3.5) {
+                fillCircleWorld(px, y, 1.15, 1);
+              }
+            }
+          }
+          // Add angled deflection walls
+          fillRectWorld(14.0, 2.0, 14.8, 8.5, 1);
+          fillRectWorld(26.0, 31.5, 26.8, 38.0, 1);
+
+        } else if (presetName === 'maze') {
+          // Wide-Corridor Structured Maze (8x8 cells, each cell = 5.0m)
+          spawnX = 2.75;
+          spawnY = 2.75;
+          spawnYaw = 0.0;
+
+          const cols = 8;
+          const rows = 8;
+          const cellSpan = WORLD_SIZE / cols; // 5.0m per maze block
+          const visited = new Uint8Array(cols * rows);
+          const hWalls = new Uint8Array(cols * (rows + 1)).fill(1);
+          const vWalls = new Uint8Array((cols + 1) * rows).fill(1);
+
+          function carve(cx, cy) {
+            visited[cy * cols + cx] = 1;
+            const dirs = [
+              { dx: 0, dy: -1 },
+              { dx: 1, dy: 0 },
+              { dx: 0, dy: 1 },
+              { dx: -1, dy: 0 },
+            ];
+            // Shuffle directions
+            for (let i = dirs.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+            }
+            for (const d of dirs) {
+              const nx = cx + d.dx;
+              const ny = cy + d.dy;
+              if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && !visited[ny * cols + nx]) {
+                if (d.dx === 1) vWalls[cy * (cols + 1) + (cx + 1)] = 0;
+                if (d.dx === -1) vWalls[cy * (cols + 1) + cx] = 0;
+                if (d.dy === 1) hWalls[(cy + 1) * cols + cx] = 0;
+                if (d.dy === -1) hWalls[cy * cols + cx] = 0;
+                carve(nx, ny);
+              }
+            }
+          }
+          carve(0, 0);
+
+          const wallHalf = 0.25;
+          for (let r = 0; r <= rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              if (hWalls[r * cols + c]) {
+                const wy = r * cellSpan;
+                fillRectWorld(c * cellSpan, wy - wallHalf, (c + 1) * cellSpan, wy + wallHalf, 1);
+              }
+            }
+          }
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c <= cols; c++) {
+              if (vWalls[r * (cols + 1) + c]) {
+                const wx = c * cellSpan;
+                fillRectWorld(wx - wallHalf, r * cellSpan, wx + wallHalf, (r + 1) * cellSpan, 1);
+              }
+            }
+          }
+          // Re-ensure outer boundary
+          clearOuterBoundaryOnly();
+        } else if (presetName === 'random') {
+          // Procedural Tactical Arena
+          spawnX = 20.0;
+          spawnY = 20.0;
+          spawnYaw = Math.random() * Math.PI * 2;
+
+          // Random rectangular walls and cylindrical pillars
+          for (let i = 0; i < 16; i++) {
+            const isCircle = Math.random() < 0.45;
+            const cx = 3.5 + Math.random() * 33.0;
+            const cy = 3.5 + Math.random() * 33.0;
+            if (Math.hypot(cx - spawnX, cy - spawnY) < 4.5) continue;
+
+            if (isCircle) {
+              fillCircleWorld(cx, cy, 0.8 + Math.random() * 1.1, 1);
+            } else {
+              const w = (Math.random() < 0.5) ? (3.0 + Math.random() * 5.5) : 0.75;
+              const h = (w > 1.0) ? 0.75 : (3.0 + Math.random() * 5.5);
+              fillRectWorld(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2, 1);
+            }
+          }
+        }
+
+        // Clear a guaranteed safe spawn zone around (spawnX, spawnY)
+        fillCircleWorld(spawnX, spawnY, 2.2, 0);
+
+        // Pre-render X-Ray Ground Truth offscreen canvas
+        xrayOffCtx.clearRect(0, 0, GRID_DIM, GRID_DIM);
+        xrayOffCtx.fillStyle = 'rgba(245, 158, 11, 0.35)';
+        for (let gy = 0; gy < GRID_DIM; gy++) {
+          for (let gx = 0; gx < GRID_DIM; gx++) {
+            if (trueGrid[gy * GRID_DIM + gx] === 1) {
+              // Flip Y so canvas top=maxY, bottom=0
+              xrayOffCtx.fillRect(gx, GRID_DIM - 1 - gy, 1, 1);
+            }
+          }
+        }
+
+        // Compute reachable cells via BFS from spawn for accurate % coverage
+        computeReachableCells(spawnX, spawnY);
+
+        // Reset rover & SLAM state
+        resetSlamSession(spawnX, spawnY, spawnYaw);
+      }
+
+      function clearOuterBoundaryOnly() {
+        for (let i = 0; i < GRID_DIM; i++) {
+          for (let t = 0; t < 2; t++) {
+            trueGrid[t * GRID_DIM + i] = 1;
+            trueGrid[(GRID_DIM - 1 - t) * GRID_DIM + i] = 1;
+            trueGrid[i * GRID_DIM + t] = 1;
+            trueGrid[i * GRID_DIM + (GRID_DIM - 1 - t)] = 1;
+          }
+        }
+      }
+
+      function computeReachableCells(sx, sy) {
+        const visited = new Uint8Array(TOTAL_CELLS);
+        const startGx = worldToGrid(sx);
+        const startGy = worldToGrid(sy);
+        if (!isInsideGrid(startGx, startGy)) {
+          totalReachableCells = TOTAL_CELLS;
+          return;
+        }
+        const queue = [startGy * GRID_DIM + startGx];
+        visited[queue[0]] = 1;
+        let count = 0;
+        let head = 0;
+        while (head < queue.length) {
+          const curr = queue[head++];
+          count++;
+          const cx = curr % GRID_DIM;
+          const cy = (curr - cx) / GRID_DIM;
+          const neighbors = [
+            [cx + 1, cy],
+            [cx - 1, cy],
+            [cx, cy + 1],
+            [cx, cy - 1],
+          ];
+          for (const [nx, ny] of neighbors) {
+            if (isInsideGrid(nx, ny)) {
+              const nIdx = ny * GRID_DIM + nx;
+              if (!visited[nIdx]) {
+                visited[nIdx] = 1;
+                if (trueGrid[nIdx] === 0) {
+                  queue.push(nIdx);
+                } else {
+                  // Boundary wall adjacent to reachable free space counts toward mappable cells
+                  count++;
+                }
+              }
+            }
+          }
+        }
+        totalReachableCells = Math.max(1, count);
+      }
+
+      function resetSlamSession(sx = rover.x, sy = rover.y, syaw = 0.0) {
+        slamGrid.fill(CELL_UNEXPLORED);
+        slamDirty = true;
+
+        rover.x = sx;
+        rover.y = sy;
+        rover.yaw = syaw;
+        rover.v = 0.0;
+        rover.omega = 0.0;
+        rover.trail = [{ x: sx, y: sy }];
+        rover.collisionAlertTimer = 0.0;
+
+        clearWaypoint();
+        performLidarScan();
+      }
+
+      // =========================================================================
+      // 6. REALISTIC 360° RAYCASTING LIDAR SENSOR (2D FAST VOXEL DDA)
+      // =========================================================================
+      function performLidarScan() {
+        const numRays = params.lidarRays;
+        const maxRange = params.lidarRange;
+        const angleStep = (Math.PI * 2) / numRays;
+
+        currentRays = [];
+        activeLidarHits = 0;
+
+        const startGx = worldToGrid(rover.x);
+        const startGy = worldToGrid(rover.y);
+
+        for (let i = 0; i < numRays; i++) {
+          const rayAngle = rover.yaw + i * angleStep;
+          const dirX = Math.cos(rayAngle);
+          const dirY = Math.sin(rayAngle);
+
+          // Amanatides & Woo Fast Voxel Traversal (DDA)
+          let mapX = startGx;
+          let mapY = startGy;
+
+          const deltaDistX = (dirX === 0) ? 1e30 : Math.abs(CELL_RES / dirX);
+          const deltaDistY = (dirY === 0) ? 1e30 : Math.abs(CELL_RES / dirY);
+
+          let stepX, stepY;
+          let sideDistX, sideDistY;
+
+          if (dirX < 0) {
+            stepX = -1;
+            sideDistX = (rover.x - mapX * CELL_RES) / Math.abs(dirX || 1e-12);
+          } else {
+            stepX = 1;
+            sideDistX = ((mapX + 1) * CELL_RES - rover.x) / Math.abs(dirX || 1e-12);
+          }
+
+          if (dirY < 0) {
+            stepY = -1;
+            sideDistY = (rover.y - mapY * CELL_RES) / Math.abs(dirY || 1e-12);
+          } else {
+            stepY = 1;
+            sideDistY = ((mapY + 1) * CELL_RES - rover.y) / Math.abs(dirY || 1e-12);
+          }
+
+          let hit = false;
+          let perpWallDist = 0;
+
+          while (true) {
+            // Check current voxel
+            if (!isInsideGrid(mapX, mapY)) break;
+
+            const idx = mapY * GRID_DIM + mapX;
+            if (trueGrid[idx] === 1) {
+              hit = true;
+              break;
+            } else {
+              // Mark traversed cell as Free Space
+              if (slamGrid[idx] !== CELL_FREE) {
+                slamGrid[idx] = CELL_FREE;
+                slamDirty = true;
+              }
+            }
+
+            // Advance DDA to next voxel
+            if (sideDistX < sideDistY) {
+              perpWallDist = sideDistX;
+              if (perpWallDist > maxRange) break;
+              sideDistX += deltaDistX;
+              mapX += stepX;
+            } else {
+              perpWallDist = sideDistY;
+              if (perpWallDist > maxRange) break;
+              sideDistY += deltaDistY;
+              mapY += stepY;
+            }
+          }
+
+          if (hit && perpWallDist <= maxRange) {
+            activeLidarHits++;
+            let measuredDist = perpWallDist;
+
+            // Optional Gaussian sensor range noise (sigma = 0.06m)
+            if (params.gaussianNoise) {
+              measuredDist = Math.max(0.15, perpWallDist + boxGaussianRandom() * 0.06);
+            }
+
+            const hitX = rover.x + dirX * measuredDist;
+            const hitY = rover.y + dirY * measuredDist;
+
+            // Update SLAM grid cell at measured hit coordinate
+            const hitGx = worldToGrid(hitX);
+            const hitGy = worldToGrid(hitY);
+            if (isInsideGrid(hitGx, hitGy)) {
+              const hitIdx = hitGy * GRID_DIM + hitGx;
+              if (slamGrid[hitIdx] !== CELL_OCCUPIED) {
+                slamGrid[hitIdx] = CELL_OCCUPIED;
+                slamDirty = true;
+              }
+            }
+
+            currentRays.push({ endX: hitX, endY: hitY, hit: true });
+          } else {
+            const endX = rover.x + dirX * maxRange;
+            const endY = rover.y + dirY * maxRange;
+            currentRays.push({ endX, endY, hit: false });
+          }
+        }
+      }
+
+      // Sync slamGrid TypedArray into Offscreen Canvas ImageData (only when dirty)
+      function syncSlamOffscreenCanvas() {
+        if (!slamDirty) return;
+        const data = slamImageData.data;
+
+        for (let gy = 0; gy < GRID_DIM; gy++) {
+          // Flip Y row so world Y=0 is at bottom of canvas
+          const canvasRow = GRID_DIM - 1 - gy;
+          for (let gx = 0; gx < GRID_DIM; gx++) {
+            const state = slamGrid[gy * GRID_DIM + gx];
+            const pxOffset = (canvasRow * GRID_DIM + gx) * 4;
+
+            if (state === CELL_UNEXPLORED) {
+              // Dark Fog of War (#090f1d)
+              data[pxOffset] = 9;
+              data[pxOffset + 1] = 15;
+              data[pxOffset + 2] = 29;
+              data[pxOffset + 3] = 255;
+            } else if (state === CELL_FREE) {
+              // Illuminated Free Floor (#1a263e)
+              data[pxOffset] = 26;
+              data[pxOffset + 1] = 38;
+              data[pxOffset + 2] = 62;
+              data[pxOffset + 3] = 255;
+            } else {
+              // High-Contrast Occupied Wall (#f8fafc)
+              data[pxOffset] = 248;
+              data[pxOffset + 1] = 250;
+              data[pxOffset + 2] = 252;
+              data[pxOffset + 3] = 255;
+            }
+          }
+        }
+        slamOffCtx.putImageData(slamImageData, 0, 0);
+        slamDirty = false;
+      }
+
+      // =========================================================================
+      // 7. COLLISION DETECTION & 4WD ROVER KINEMATICS
+      // =========================================================================
+      function checkCircleWallCollision(cx, cy, radius) {
+        const minGx = Math.max(0, worldToGrid(cx - radius));
+        const maxGx = Math.min(GRID_DIM - 1, worldToGrid(cx + radius));
+        const minGy = Math.max(0, worldToGrid(cy - radius));
+        const maxGy = Math.min(GRID_DIM - 1, worldToGrid(cy + radius));
+
+        for (let gy = minGy; gy <= maxGy; gy++) {
+          const cellMinY = gy * CELL_RES;
+          const cellMaxY = cellMinY + CELL_RES;
+          const closestY = Math.max(cellMinY, Math.min(cy, cellMaxY));
+
+          for (let gx = minGx; gx <= maxGx; gx++) {
+            if (trueGrid[gy * GRID_DIM + gx] === 1) {
+              const cellMinX = gx * CELL_RES;
+              const cellMaxX = cellMinX + CELL_RES;
+              const closestX = Math.max(cellMinX, Math.min(cx, cellMaxX));
+
+              const dx = cx - closestX;
+              const dy = cy - closestY;
+              if (dx * dx + dy * dy < radius * radius) {
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      }
+
+      function updateRoverPhysics(dt) {
+        const manualActive = keysPressed.up || keysPressed.down || keysPressed.left || keysPressed.right;
+
+        // Manual override cancels autonomous A* waypoint driving immediately
+        if (manualActive && autoDriveActive) {
+          autoDriveActive = false;
+          updateAutoDriveButtonUI();
+          showToast('수동 조작 감지: 자율주행(Auto A*)이 해제되었습니다.', 'amber');
+        }
+
+        let targetV = 0.0;
+        let targetOmega = 0.0;
+
+        if (autoDriveActive && waypoint && aStarPath.length > 0) {
+          // Pure Pursuit controller along A* path
+          const distToGoal = Math.hypot(waypoint.x - rover.x, waypoint.y - rover.y);
+          if (distToGoal < 0.4) {
+            // Reached destination!
+            autoDriveActive = false;
+            aStarPath = [];
+            waypoint = null;
+            updateAutoDriveButtonUI();
+            updateWaypointUI();
+            showToast('목표 웨이포인트 도달 완료!', 'emerald');
+          } else {
+            // Look-ahead target selection
+            const lookAheadDist = Math.max(0.8, params.robotRadius * 1.8);
+            let lookPt = aStarPath[aStarPath.length - 1];
+
+            // Prune passed waypoints
+            while (aStarPath.length > 1 && Math.hypot(aStarPath[0].x - rover.x, aStarPath[0].y - rover.y) < 0.45) {
+              aStarPath.shift();
+            }
+
+            for (let i = 0; i < aStarPath.length; i++) {
+              if (Math.hypot(aStarPath[i].x - rover.x, aStarPath[i].y - rover.y) >= lookAheadDist) {
+                lookPt = aStarPath[i];
+                break;
+              }
+            }
+
+            const desiredYaw = Math.atan2(lookPt.y - rover.y, lookPt.x - rover.x);
+            let yawError = desiredYaw - rover.yaw;
+            while (yawError > Math.PI) yawError -= Math.PI * 2;
+            while (yawError < -Math.PI) yawError += Math.PI * 2;
+
+            targetOmega = Math.max(-params.steerRate, Math.min(params.steerRate, yawError * 3.2));
+            // Slow down when making sharp turns
+            const turnFactor = Math.max(0.25, 1.0 - Math.abs(yawError) / (Math.PI * 0.65));
+            targetV = params.maxSpeed * 0.85 * turnFactor;
+          }
+        } else {
+          // Manual Teleoperation input
+          if (keysPressed.up) targetV += params.maxSpeed;
+          if (keysPressed.down) targetV -= params.maxSpeed * 0.75;
+          if (keysPressed.left) targetOmega += params.steerRate;
+          if (keysPressed.right) targetOmega -= params.steerRate;
+        }
+
+        // Smooth acceleration & damping (60 FPS continuous motion)
+        const linearAccel = 14.0;
+        const angularAccel = 18.0;
+        rover.v += (targetV - rover.v) * Math.min(1, linearAccel * dt);
+        rover.omega += (targetOmega - rover.omega) * Math.min(1, angularAccel * dt);
+
+        if (Math.abs(rover.v) < 0.005) rover.v = 0;
+        if (Math.abs(rover.omega) < 0.005) rover.omega = 0;
+
+        // Integrate orientation
+        rover.yaw += rover.omega * dt;
+        // Normalize yaw to [-PI, PI]
+        while (rover.yaw > Math.PI) rover.yaw -= Math.PI * 2;
+        while (rover.yaw < -Math.PI) rover.yaw += Math.PI * 2;
+
+        // Integrate position with sliding wall collision resolution
+        const dx = rover.v * Math.cos(rover.yaw) * dt;
+        const dy = rover.v * Math.sin(rover.yaw) * dt;
+
+        if (dx !== 0 || dy !== 0) {
+          const nextX = rover.x + dx;
+          const nextY = rover.y + dy;
+
+          if (!checkCircleWallCollision(nextX, nextY, params.robotRadius)) {
+            rover.x = nextX;
+            rover.y = nextY;
+          } else {
+            // Trigger collision alert & attempt sliding along X or Y axis
+            rover.collisionAlertTimer = 0.45;
+            let slid = false;
+
+            if (!checkCircleWallCollision(nextX, rover.y, params.robotRadius)) {
+              rover.x = nextX;
+              slid = true;
+            } else if (!checkCircleWallCollision(rover.x, nextY, params.robotRadius)) {
+              rover.y = nextY;
+              slid = true;
+            }
+
+            if (!slid) {
+              rover.v = 0;
+              if (autoDriveActive) {
+                autoDriveActive = false;
+                updateAutoDriveButtonUI();
+                showToast('경로상 장애물 충돌 위험으로 자율주행이 정지되었습니다.', 'rose');
+              }
+            }
+          }
+
+          // Append to trajectory trail if moved at least 0.12m
+          const lastPt = rover.trail[rover.trail.length - 1];
+          if (!lastPt || Math.hypot(rover.x - lastPt.x, rover.y - lastPt.y) >= 0.12) {
+            rover.trail.push({ x: rover.x, y: rover.y });
+            if (rover.trail.length > 2500) rover.trail.shift();
+          }
+        }
+
+        if (rover.collisionAlertTimer > 0) {
+          rover.collisionAlertTimer = Math.max(0, rover.collisionAlertTimer - dt);
+        }
+
+        // Perform 360° LiDAR scan at new pose
+        performLidarScan();
+      }
+
+      // =========================================================================
+      // 8. HYBRID AUTONOMOUS A* PATHFINDER ON DISCOVERED OCCUPANCY GRID
+      // =========================================================================
+      function computeAStarPath(startWorld, goalWorld) {
+        const sx = worldToGrid(startWorld.x);
+        const sy = worldToGrid(startWorld.y);
+        const gx = worldToGrid(goalWorld.x);
+        const gy = worldToGrid(goalWorld.y);
+
+        if (!isInsideGrid(sx, sy) || !isInsideGrid(gx, gy)) return [];
+
+        // Try inflated clearance first based on robotRadius, then fallback to tight clearance
+        const inflationCells = Math.max(1, Math.floor((params.robotRadius * 0.85) / CELL_RES));
+        let path = runAStarSearch(sx, sy, gx, gy, inflationCells);
+        if (path.length === 0 && inflationCells > 1) {
+          path = runAStarSearch(sx, sy, gx, gy, 1);
+        }
+        return path;
+      }
+
+      function runAStarSearch(sx, sy, gx, gy, inflateRadius) {
+        // Build inflated costmap from discovered slamGrid
+        // Unexplored (0) and Occupied (2) are blocked
+        const blocked = new Uint8Array(TOTAL_CELLS);
+        for (let y = 0; y < GRID_DIM; y++) {
+          for (let x = 0; x < GRID_DIM; x++) {
+            const state = slamGrid[y * GRID_DIM + x];
+            if (state === CELL_OCCUPIED) {
+              for (let dy = -inflateRadius; dy <= inflateRadius; dy++) {
+                for (let dx = -inflateRadius; dx <= inflateRadius; dx++) {
+                  if (dx * dx + dy * dy <= inflateRadius * inflateRadius) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    if (isInsideGrid(nx, ny)) {
+                      blocked[ny * GRID_DIM + nx] = 1;
+                    }
+                  }
+                }
+              }
+            } else if (state === CELL_UNEXPLORED) {
+              blocked[y * GRID_DIM + x] = 1;
+            }
+          }
+        }
+
+        // Ensure start and goal cells themselves are unblocked
+        blocked[sy * GRID_DIM + sx] = 0;
+        blocked[gy * GRID_DIM + gx] = 0;
+
+        const gScore = new Float32Array(TOTAL_CELLS).fill(1e9);
+        const fScore = new Float32Array(TOTAL_CELLS).fill(1e9);
+        const cameFrom = new Int32Array(TOTAL_CELLS).fill(-1);
+        const closed = new Uint8Array(TOTAL_CELLS);
+        const openSet = new Set();
+
+        const startIdx = sy * GRID_DIM + sx;
+        const goalIdx = gy * GRID_DIM + gx;
+
+        gScore[startIdx] = 0;
+        fScore[startIdx] = Math.hypot(gx - sx, gy - sy);
+        openSet.add(startIdx);
+
+        const dirs = [
+          [1, 0, 1.0], [-1, 0, 1.0], [0, 1, 1.0], [0, -1, 1.0],
+          [1, 1, 1.4142], [-1, 1, 1.4142], [1, -1, 1.4142], [-1, -1, 1.4142],
+        ];
+
+        while (openSet.size > 0) {
+          // Pick node in openSet with lowest fScore
+          let current = -1;
+          let bestF = 1e9;
+          for (const idx of openSet) {
+            if (fScore[idx] < bestF) {
+              bestF = fScore[idx];
+              current = idx;
+            }
+          }
+
+          if (current === goalIdx) {
+            // Reconstruct world path
+            const result = [];
+            let curr = current;
+            while (curr !== -1) {
+              const cx = curr % GRID_DIM;
+              const cy = (curr - cx) / GRID_DIM;
+              result.push({
+                x: gridToWorldCenter(cx),
+                y: gridToWorldCenter(cy),
+              });
+              curr = cameFrom[curr];
+            }
+            return result.reverse();
+          }
+
+          openSet.delete(current);
+          closed[current] = 1;
+
+          const cx = current % GRID_DIM;
+          const cy = (current - cx) / GRID_DIM;
+
+          for (const [dx, dy, stepCost] of dirs) {
+            const nx = cx + dx;
+            const ny = cy + dy;
+            if (!isInsideGrid(nx, ny)) continue;
+
+            const nIdx = ny * GRID_DIM + nx;
+            if (closed[nIdx] || blocked[nIdx]) continue;
+
+            // Prevent diagonal corner clipping through walls
+            if (dx !== 0 && dy !== 0) {
+              if (blocked[cy * GRID_DIM + nx] || blocked[ny * GRID_DIM + cx]) continue;
+            }
+
+            const tentativeG = gScore[current] + stepCost;
+            if (tentativeG < gScore[nIdx]) {
+              cameFrom[nIdx] = current;
+              gScore[nIdx] = tentativeG;
+              fScore[nIdx] = tentativeG + Math.hypot(gx - nx, gy - ny);
+              openSet.add(nIdx);
+            }
+          }
+        }
+
+        return [];
+      }
+
+      // =========================================================================
+      // 9. CANVAS RENDERING PIPELINE (60 FPS RVIZ STYLE)
+      // =========================================================================
+      let canvasDisplaySize = 600;
+
+      function resizeCanvas() {
+        const rect = canvasContainer.getBoundingClientRect();
+        const size = Math.max(280, Math.floor(Math.min(rect.width - 16, rect.height - 16)));
+        canvasDisplaySize = size;
+
+        const dpr = window.devicePixelRatio || 1;
+        canvas.style.width = `${size}px`;
+        canvas.style.height = `${size}px`;
+        canvas.width = Math.floor(size * dpr);
+        canvas.height = Math.floor(size * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function worldToCanvasX(wx) {
+        return (wx / WORLD_SIZE) * canvasDisplaySize;
+      }
+
+      function worldToCanvasY(wy) {
+        return canvasDisplaySize - (wy / WORLD_SIZE) * canvasDisplaySize;
+      }
+
+      function renderScene() {
+        const S = canvasDisplaySize;
+        ctx.clearRect(0, 0, S, S);
+
+        // 1. Draw SLAM Occupancy Grid via hardware-accelerated Offscreen Canvas
+        syncSlamOffscreenCanvas();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(slamOffscreen, 0, 0, S, S);
+
+        // 2. Optional X-Ray Ground Truth Overlay
+        if (params.xrayGroundTruth) {
+          ctx.drawImage(xrayOffscreen, 0, 0, S, S);
+        }
+
+        // 3. Subtle Metric Coordinate Grid (every 5 meters)
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.11)';
+        ctx.lineWidth = 1;
+        ctx.font = '10px "JetBrains Mono", monospace';
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+
+        for (let m = 5; m < WORLD_SIZE; m += 5) {
+          const px = worldToCanvasX(m);
+          const py = worldToCanvasY(m);
+
+          ctx.beginPath();
+          ctx.moveTo(px, 0);
+          ctx.lineTo(px, S);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(0, py);
+          ctx.lineTo(S, py);
+          ctx.stroke();
+
+          ctx.fillText(`${m}m`, px + 3, S - 4);
+          ctx.fillText(`${m}m`, 4, py - 3);
+        }
+
+        // 4. Render 360° Raycasting LiDAR Beams & Hit Points
+        const rxPx = worldToCanvasX(rover.x);
+        const ryPx = worldToCanvasY(rover.y);
+
+        // Translucent cyan LiDAR scan fan
+        ctx.lineWidth = 1;
+        for (let i = 0; i < currentRays.length; i++) {
+          const ray = currentRays[i];
+          const ex = worldToCanvasX(ray.endX);
+          const ey = worldToCanvasY(ray.endY);
+
+          ctx.strokeStyle = ray.hit
+            ? 'rgba(16, 185, 129, 0.16)'
+            : 'rgba(6, 182, 212, 0.08)';
+          ctx.beginPath();
+          ctx.moveTo(rxPx, ryPx);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+
+          if (ray.hit) {
+            ctx.fillStyle = 'rgba(52, 211, 153, 0.85)';
+            ctx.fillRect(ex - 1.5, ey - 1.5, 3, 3);
+          }
+        }
+
+        // 5. Render Rover Trajectory Trail
+        if (rover.trail.length > 1) {
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(worldToCanvasX(rover.trail[0].x), worldToCanvasY(rover.trail[0].y));
+          for (let i = 1; i < rover.trail.length; i++) {
+            ctx.lineTo(worldToCanvasX(rover.trail[i].x), worldToCanvasY(rover.trail[i].y));
+          }
+          ctx.stroke();
+        }
+
+        // 6. Render Hybrid A* Planned Path & Target Waypoint
+        if (aStarPath.length > 1) {
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.moveTo(worldToCanvasX(aStarPath[0].x), worldToCanvasY(aStarPath[0].y));
+          for (let i = 1; i < aStarPath.length; i++) {
+            ctx.lineTo(worldToCanvasX(aStarPath[i].x), worldToCanvasY(aStarPath[i].y));
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        if (waypoint) {
+          const wxPx = worldToCanvasX(waypoint.x);
+          const wyPx = worldToCanvasY(waypoint.y);
+
+          // Pulsing target reticle
+          const pulse = 8 + Math.sin(performance.now() * 0.006) * 2.5;
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(wxPx, wyPx, pulse, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.arc(wxPx, wyPx, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 7. Render 4WD Rover Chassis, Safety Radius Ring & Directional Heading Arrow
+        const radiusPx = (params.robotRadius / WORLD_SIZE) * S;
+
+        // Safety radius ring
+        ctx.strokeStyle = rover.collisionAlertTimer > 0
+          ? 'rgba(244, 63, 94, 0.95)'
+          : 'rgba(6, 182, 212, 0.55)';
+        ctx.fillStyle = rover.collisionAlertTimer > 0
+          ? 'rgba(244, 63, 94, 0.22)'
+          : 'rgba(6, 182, 212, 0.12)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(rxPx, ryPx, radiusPx, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Rover body rotated by yaw
+        ctx.save();
+        ctx.translate(rxPx, ryPx);
+        ctx.rotate(-rover.yaw); // Negative because canvas Y points downwards
+
+        const bodyLen = Math.max(12, radiusPx * 1.45);
+        const bodyWid = Math.max(9, radiusPx * 1.1);
+
+        // 4WD Wheels
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1;
+        const wheelW = bodyLen * 0.34;
+        const wheelH = bodyWid * 0.24;
+        ctx.fillRect(-bodyLen * 0.38, -bodyWid * 0.62, wheelW, wheelH);
+        ctx.fillRect(bodyLen * 0.06, -bodyWid * 0.62, wheelW, wheelH);
+        ctx.fillRect(-bodyLen * 0.38, bodyWid * 0.38, wheelW, wheelH);
+        ctx.fillRect(bodyLen * 0.06, bodyWid * 0.38, wheelW, wheelH);
+
+        // Main Rover Chassis
+        ctx.fillStyle = '#0284c7';
+        ctx.strokeStyle = '#e0f2fe';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(-bodyLen * 0.45, -bodyWid * 0.45, bodyLen * 0.9, bodyWid * 0.9, 3);
+        ctx.fill();
+        ctx.stroke();
+
+        // Forward Heading Arrow
+        ctx.strokeStyle = '#34d399';
+        ctx.fillStyle = '#34d399';
+        ctx.lineWidth = 2;
+        const arrowTip = Math.max(16, radiusPx * 1.35);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(arrowTip, 0);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(arrowTip + 4, 0);
+        ctx.lineTo(arrowTip - 3, -3.5);
+        ctx.lineTo(arrowTip - 3, 3.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Top RPLIDAR A2 Turret Puck
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, Math.max(3, radiusPx * 0.28), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // =========================================================================
+      // 10. TELEMETRY & HUD SYNCHRONIZATION
+      // =========================================================================
+      function updateTelemetryHUD() {
+        telX.textContent = rover.x.toFixed(2);
+        telY.textContent = rover.y.toFixed(2);
+        const yawDeg = ((rover.yaw * 180) / Math.PI + 360) % 360;
+        telYaw.textContent = yawDeg.toFixed(1);
+        telVel.textContent = rover.v.toFixed(2);
+        telOmega.textContent = rover.omega.toFixed(2);
+        telHits.textContent = activeLidarHits;
+
+        // Calculate exploration coverage %
+        let exploredCount = 0;
+        for (let i = 0; i < TOTAL_CELLS; i++) {
+          if (slamGrid[i] !== CELL_UNEXPLORED) exploredCount++;
+        }
+        const pct = Math.min(100, (exploredCount / totalReachableCells) * 100);
+        telCoverage.textContent = `${pct.toFixed(1)}%`;
+        coverageBar.style.width = `${pct.toFixed(1)}%`;
+
+        // Update System Status Pill
+        if (rover.collisionAlertTimer > 0) {
+          statusBadge.className = 'flex items-center gap-2 px-3.5 py-1.5 rounded-lg border font-mono text-xs font-bold tracking-wider transition-all duration-150 bg-rose-500/20 border-rose-500 text-rose-300 animate-pulse';
+          statusDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-400';
+          statusText.textContent = 'COLLISION ALERT';
+        } else if (autoDriveActive) {
+          statusBadge.className = 'flex items-center gap-2 px-3.5 py-1.5 rounded-lg border font-mono text-xs font-bold tracking-wider transition-all duration-150 bg-emerald-500/15 border-emerald-500/60 text-emerald-300';
+          statusDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping';
+          statusText.textContent = 'AUTO A* NAV';
+        } else {
+          statusBadge.className = 'flex items-center gap-2 px-3.5 py-1.5 rounded-lg border font-mono text-xs font-bold tracking-wider transition-all duration-150 bg-cyan-500/15 border-cyan-500/50 text-cyan-300';
+          statusDot.className = 'w-2.5 h-2.5 rounded-full bg-cyan-400';
+          statusText.textContent = 'MANUAL TELEOP';
+        }
+      }
+
+      function updateWaypointUI() {
+        if (waypoint) {
+          waypointCoordBadge.textContent = `(${waypoint.x.toFixed(1)}m, ${waypoint.y.toFixed(1)}m)`;
+          waypointCoordBadge.className = 'text-[11px] font-mono text-emerald-300 font-semibold';
+          btnAutoDrive.disabled = aStarPath.length === 0;
+        } else {
+          waypointCoordBadge.textContent = 'NO TARGET';
+          waypointCoordBadge.className = 'text-[11px] font-mono text-slate-400';
+          btnAutoDrive.disabled = true;
+        }
+      }
+
+      function updateAutoDriveButtonUI() {
+        if (autoDriveActive) {
+          btnAutoDriveText.textContent = 'Pause Auto-Drive';
+          btnAutoDrive.classList.add('bg-emerald-500/35', 'border-emerald-400');
+        } else {
+          btnAutoDriveText.textContent = 'Drive to Waypoint (Auto)';
+          btnAutoDrive.classList.remove('bg-emerald-500/35', 'border-emerald-400');
+        }
+      }
+
+      function clearWaypoint() {
+        waypoint = null;
+        aStarPath = [];
+        autoDriveActive = false;
+        updateWaypointUI();
+        updateAutoDriveButtonUI();
+      }
+
+      // =========================================================================
+      // 11. EVENT LISTENERS (KEYBOARD, CANVAS CLICK, D-PAD, SLIDERS, TOOLBAR)
+      // =========================================================================
+      const padUp = document.getElementById('padUp');
+      const padDown = document.getElementById('padDown');
+      const padLeft = document.getElementById('padLeft');
+      const padRight = document.getElementById('padRight');
+      const padStop = document.getElementById('padStop');
+
+      function syncDpadVisuals() {
+        padUp.classList.toggle('active-press', keysPressed.up);
+        padDown.classList.toggle('active-press', keysPressed.down);
+        padLeft.classList.toggle('active-press', keysPressed.left);
+        padRight.classList.toggle('active-press', keysPressed.right);
+      }
+
+      function triggerEmergencyStop() {
+        keysPressed.up = false;
+        keysPressed.down = false;
+        keysPressed.left = false;
+        keysPressed.right = false;
+        rover.v = 0;
+        rover.omega = 0;
+        if (autoDriveActive) {
+          autoDriveActive = false;
+          updateAutoDriveButtonUI();
+        }
+        syncDpadVisuals();
+        padStop.classList.add('active-press');
+        setTimeout(() => padStop.classList.remove('active-press'), 180);
+        showToast('긴급 정지 (E-STOP) 실행됨', 'rose');
+      }
+
+      // Keyboard Controls (prevent arrow keys & spacebar from scrolling browser!)
+      window.addEventListener('keydown', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+          e.preventDefault();
+        }
+
+        switch (e.code) {
+          case 'ArrowUp':
+          case 'KeyW':
+            keysPressed.up = true;
+            break;
+          case 'ArrowDown':
+          case 'KeyS':
+            keysPressed.down = true;
+            break;
+          case 'ArrowLeft':
+          case 'KeyA':
+            keysPressed.left = true;
+            break;
+          case 'ArrowRight':
+          case 'KeyD':
+            keysPressed.right = true;
+            break;
+          case 'Space':
+            triggerEmergencyStop();
+            break;
+        }
+        syncDpadVisuals();
+      }, { passive: false });
+
+      window.addEventListener('keyup', (e) => {
+        switch (e.code) {
+          case 'ArrowUp':
+          case 'KeyW':
+            keysPressed.up = false;
+            break;
+          case 'ArrowDown':
+          case 'KeyS':
+            keysPressed.down = false;
+            break;
+          case 'ArrowLeft':
+          case 'KeyA':
+            keysPressed.left = false;
+            break;
+          case 'ArrowRight':
+          case 'KeyD':
+            keysPressed.right = false;
+            break;
+        }
+        syncDpadVisuals();
+      });
+
+      // Bind Virtual D-Pad Pointer Events (supports mouse & touch smoothly)
+      function bindDpadButton(btnEl, directionKey) {
+        const startPress = (e) => {
+          e.preventDefault();
+          keysPressed[directionKey] = true;
+          syncDpadVisuals();
+        };
+        const endPress = (e) => {
+          e.preventDefault();
+          keysPressed[directionKey] = false;
+          syncDpadVisuals();
+        };
+        btnEl.addEventListener('pointerdown', startPress);
+        btnEl.addEventListener('pointerup', endPress);
+        btnEl.addEventListener('pointerleave', endPress);
+        btnEl.addEventListener('pointercancel', endPress);
+      }
+
+      bindDpadButton(padUp, 'up');
+      bindDpadButton(padDown, 'down');
+      bindDpadButton(padLeft, 'left');
+      bindDpadButton(padRight, 'right');
+      padStop.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        triggerEmergencyStop();
+      });
+
+      // Canvas Click -> Place Hybrid A* Waypoint on Explored Free Space
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        const wx = (clickX / rect.width) * WORLD_SIZE;
+        const wy = ((rect.height - clickY) / rect.height) * WORLD_SIZE;
+
+        const gx = worldToGrid(wx);
+        const gy = worldToGrid(wy);
+
+        if (!isInsideGrid(gx, gy)) return;
+
+        const cellState = slamGrid[gy * GRID_DIM + gx];
+        if (cellState !== CELL_FREE) {
+          showToast('미탐색(Fog of War) 구역이나 장애물 위에는 웨이포인트를 지정할 수 없습니다.', 'amber');
+          return;
+        }
+
+        const path = computeAStarPath({ x: rover.x, y: rover.y }, { x: wx, y: wy });
+        if (path.length === 0) {
+          showToast('현재 탐색된 지도 내에서 안전한 A* 경로를 찾을 수 없습니다.', 'rose');
+          return;
+        }
+
+        waypoint = { x: wx, y: wy };
+        aStarPath = path;
+        updateWaypointUI();
+        showToast(`A* 경로 생성 완료 (${path.length} nodes). 'Drive to Waypoint'를 눌러 이동하세요.`, 'emerald');
+      });
+
+      // Hybrid A* Auto-Drive & Clear Buttons
+      btnAutoDrive.addEventListener('click', () => {
+        if (!waypoint || aStarPath.length === 0) return;
+        autoDriveActive = !autoDriveActive;
+        updateAutoDriveButtonUI();
+        if (autoDriveActive) {
+          showToast('자율주행 A* 경로 추종 시작!', 'emerald');
+        }
+      });
+
+      btnClearWaypoint.addEventListener('click', () => {
+        clearWaypoint();
+      });
+
+      // Top Toolbar Controls
+      const mapPresetSelect = document.getElementById('mapPresetSelect');
+      mapPresetSelect.addEventListener('change', (e) => {
+        buildEnvironment(e.target.value);
+        showToast(`환경 프리셋 변경: ${e.target.options[e.target.selectedIndex].text}`, 'emerald');
+      });
+
+      document.getElementById('btnRandomizeMap').addEventListener('click', () => {
+        if (mapPresetSelect.value === 'maze') {
+          buildEnvironment('maze');
+        } else {
+          buildEnvironment('random');
+        }
+        showToast('새로운 무작위 미지 환경이 생성되었습니다.', 'emerald');
+      });
+
+      document.getElementById('btnResetSlam').addEventListener('click', () => {
+        resetSlamSession(rover.x, rover.y, rover.yaw);
+        showToast('SLAM 점유 지도가 초기화되었습니다.', 'amber');
+      });
+
+      document.getElementById('toggleXray').addEventListener('change', (e) => {
+        params.xrayGroundTruth = e.target.checked;
+      });
+
+      document.getElementById('toggleNoise').addEventListener('change', (e) => {
+        params.gaussianNoise = e.target.checked;
+        performLidarScan();
+      });
+
+      // Download PNG Snapshot
+      document.getElementById('btnDownloadPng').addEventListener('click', () => {
+        const exportCanvas = document.createElement('canvas');
+        const size = 900;
+        const footerH = 68;
+        exportCanvas.width = size;
+        exportCanvas.height = size + footerH;
+        const eCtx = exportCanvas.getContext('2d');
+
+        // Draw current simulation frame scaled to 900x900
+        eCtx.drawImage(canvas, 0, 0, size, size);
+
+        // Engineering Report Footer
+        eCtx.fillStyle = '#090f1d';
+        eCtx.fillRect(0, size, size, footerH);
+        eCtx.strokeStyle = '#1e2d4a';
+        eCtx.lineWidth = 2;
+        eCtx.beginPath();
+        eCtx.moveTo(0, size);
+        eCtx.lineTo(size, size);
+        eCtx.stroke();
+
+        eCtx.fillStyle = '#f8fafc';
+        eCtx.font = 'bold 16px "Inter", sans-serif';
+        eCtx.fillText('PROJECT RPG // LiDAR SLAM & Teleoperation Simulator Snapshot', 20, size + 28);
+
+        eCtx.fillStyle = '#94a3b8';
+        eCtx.font = '13px "JetBrains Mono", monospace';
+        const nowStr = new Date().toLocaleString('ko-KR');
+        eCtx.fillText(
+          `KNU Aerospace Eng. | Coverage: ${telCoverage.textContent} | Pose: (${rover.x.toFixed(2)}m, ${rover.y.toFixed(2)}m) | ${nowStr}`,
+          20,
+          size + 50
+        );
+
+        const link = document.createElement('a');
+        link.download = `Project_RPG_SLAM_Map_${Date.now()}.png`;
+        link.href = exportCanvas.toDataURL('image/png');
+        link.click();
+        showToast('SLAM 지도 스냅샷(PNG)이 저장되었습니다.', 'emerald');
+      });
+
+      // Parameter Tuning Sliders
+      const sliderMaxSpeed = document.getElementById('sliderMaxSpeed');
+      const sliderSteerRate = document.getElementById('sliderSteerRate');
+      const sliderLidarRange = document.getElementById('sliderLidarRange');
+      const sliderLidarRays = document.getElementById('sliderLidarRays');
+      const sliderRobotRadius = document.getElementById('sliderRobotRadius');
+
+      const valMaxSpeed = document.getElementById('valMaxSpeed');
+      const valSteerRate = document.getElementById('valSteerRate');
+      const valLidarRange = document.getElementById('valLidarRange');
+      const valLidarRays = document.getElementById('valLidarRays');
+      const valRobotRadius = document.getElementById('valRobotRadius');
+
+      sliderMaxSpeed.addEventListener('input', (e) => {
+        params.maxSpeed = parseFloat(e.target.value);
+        valMaxSpeed.textContent = `${params.maxSpeed.toFixed(1)} m/s`;
+      });
+
+      sliderSteerRate.addEventListener('input', (e) => {
+        params.steerRate = parseFloat(e.target.value);
+        valSteerRate.textContent = `${params.steerRate.toFixed(1)} rad/s`;
+      });
+
+      sliderLidarRange.addEventListener('input', (e) => {
+        params.lidarRange = parseFloat(e.target.value);
+        valLidarRange.textContent = `${params.lidarRange.toFixed(1)} m`;
+        performLidarScan();
+      });
+
+      sliderLidarRays.addEventListener('input', (e) => {
+        params.lidarRays = parseInt(e.target.value, 10);
+        valLidarRays.textContent = `${params.lidarRays} rays`;
+        performLidarScan();
+      });
+
+      sliderRobotRadius.addEventListener('input', (e) => {
+        params.robotRadius = parseFloat(e.target.value);
+        valRobotRadius.textContent = `${params.robotRadius.toFixed(2)} m`;
+      });
+
+      document.getElementById('btnResetParams').addEventListener('click', () => {
+        params.maxSpeed = 3.0;
+        params.steerRate = 2.2;
+        params.lidarRange = 10.0;
+        params.lidarRays = 180;
+        params.robotRadius = 0.55;
+
+        sliderMaxSpeed.value = 3.0;
+        sliderSteerRate.value = 2.2;
+        sliderLidarRange.value = 10.0;
+        sliderLidarRays.value = 180;
+        sliderRobotRadius.value = 0.55;
+
+        valMaxSpeed.textContent = '3.0 m/s';
+        valSteerRate.textContent = '2.2 rad/s';
+        valLidarRange.textContent = '10.0 m';
+        valLidarRays.textContent = '180 rays';
+        valRobotRadius.textContent = '0.55 m';
+
+        performLidarScan();
+        showToast('제어 및 센서 파라미터가 기본값으로 초기화되었습니다.', 'emerald');
+      });
+
+      // =========================================================================
+      // 12. MAIN 60 FPS ANIMATION & PHYSICS LOOP
+      // =========================================================================
+      let lastTimestamp = performance.now();
+      let fpsFrameCount = 0;
+      let fpsLastCheck = performance.now();
+
+      function mainLoop(timestamp) {
+        const rawDt = (timestamp - lastTimestamp) / 1000.0;
+        lastTimestamp = timestamp;
+        const dt = Math.min(0.05, Math.max(0.001, rawDt)); // Clamp dt for tab-switch safety
+
+        // Update FPS readout twice per second
+        fpsFrameCount++;
+        if (timestamp - fpsLastCheck >= 500) {
+          const currentFps = Math.round((fpsFrameCount * 1000) / (timestamp - fpsLastCheck));
+          fpsCounter.textContent = `${currentFps} FPS`;
+          fpsFrameCount = 0;
+          fpsLastCheck = timestamp;
+        }
+
+        // Step Physics & LiDAR SLAM
+        updateRoverPhysics(dt);
+
+        // Render RViz Viewport & Telemetry HUD
+        renderScene();
+        updateTelemetryHUD();
+
+        requestAnimationFrame(mainLoop);
+      }
+
+      // Initialize application on window load
+      window.addEventListener('resize', resizeCanvas);
+      window.addEventListener('load', () => {
+        resizeCanvas();
+        buildEnvironment('rooms');
+        requestAnimationFrame(mainLoop);
+      });
+    })();
+  </script>
+</body>
+</html>
